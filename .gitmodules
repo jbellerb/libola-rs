@@ -1,0 +1,3 @@
+[submodule "ola"]
+	path = ola
+	url = https://github.com/OpenLightingProject/ola.git

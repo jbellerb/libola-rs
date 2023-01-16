@@ -1,0 +1,12 @@
+[package]
+name = "olaclient"
+version = "0.0.1"
+edition = "2021"
+
+[dependencies]
+bytes = "1.3"
+prost = "0.11"
+thiserror = "1.0"
+
+[build-dependencies]
+prost-build = { version = "0.11" }
