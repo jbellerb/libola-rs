@@ -1,21 +1,20 @@
 use std::io::Write;
 use std::net::TcpStream;
 use std::process::Command;
+use std::thread::sleep;
+use std::time::Duration;
 
 use crate::ola::proto::DmxData;
-use crate::ola::rpc::{RpcMessage, Type as RpcType};
-use crate::{DmxBuffer, Result, OLA_DEFAULT_PORT, PROTOCOL_VERSION, SIZE_MASK, VERSION_MASK};
-
-use bytes::{BufMut, BytesMut};
-use prost::Message;
+use crate::ola::{RpcCall, RpcContext};
+use crate::{DmxBuffer, Error, Result, OLA_DEFAULT_PORT};
 
 #[derive(Clone, Debug)]
-pub struct StreamingClient {
-    auto_start: bool,
-    server_port: u16,
+pub struct StreamingClientConfig {
+    pub auto_start: bool,
+    pub server_port: u16,
 }
 
-impl Default for StreamingClient {
+impl Default for StreamingClientConfig {
     fn default() -> Self {
         Self {
             auto_start: true,
@@ -24,64 +23,19 @@ impl Default for StreamingClient {
     }
 }
 
-impl StreamingClient {
+impl StreamingClientConfig {
     pub fn new() -> Self {
         Default::default()
     }
-
-    pub fn auto_start(self, auto_start: bool) -> Self {
-        Self { auto_start, ..self }
-    }
-
-    pub fn port(self, port: u16) -> Self {
-        Self {
-            server_port: port,
-            ..self
-        }
-    }
-
-    pub fn connect(self) -> Result<StreamingClientChannel<TcpStream>> {
-        if self.auto_start {
-            let stream = TcpStream::connect(("127.0.0.1", self.server_port));
-
-            if let Ok(stream) = stream {
-                return Ok(StreamingClientChannel {
-                    stream,
-                    sequence_number: 0,
-                });
-            } else {
-                let mut command = Command::new("olad");
-                let command = command.arg("--syslog");
-
-                #[cfg(not(target_os = "windows"))]
-                let command = command.arg("--daemon");
-
-                command.spawn()?;
-            }
-        }
-
-        let stream = TcpStream::connect(("127.0.0.1", self.server_port))?;
-
-        Ok(StreamingClientChannel {
-            stream,
-            sequence_number: 0,
-        })
-    }
 }
 
-pub struct StreamingClientChannel<Stream> {
-    stream: Stream,
-    sequence_number: u32,
+#[derive(Debug)]
+pub struct StreamingClient<S> {
+    stream: S,
+    ctx: RpcContext,
 }
 
-impl<Stream: Write> StreamingClientChannel<Stream> {
-    fn next_sequence(&mut self) -> u32 {
-        let number = self.sequence_number;
-        self.sequence_number += 1;
-
-        number
-    }
-
+impl<S: Write> StreamingClient<S> {
     pub fn send_dmx(&mut self, universe: u32, data: &DmxBuffer) -> Result<()> {
         self.send_dmx_with_priority(universe, data, 100)
     }
@@ -92,35 +46,51 @@ impl<Stream: Write> StreamingClientChannel<Stream> {
         data: &DmxBuffer,
         priority: u8,
     ) -> Result<()> {
-        let request = DmxData {
+        let request = RpcCall::StreamDmxData(DmxData {
             universe: universe as i32,
             data: data.to_vec(),
             priority: Some(priority as i32),
-        };
+        });
 
-        let message = RpcMessage {
-            r#type: RpcType::StreamRequest as i32,
-            id: Some(self.next_sequence()),
-            name: Some("StreamDmxData".to_string()),
-            buffer: Some(request.encode_to_vec()),
-        };
-
-        let size = message.encoded_len();
-        let mut bytes = BytesMut::with_capacity(size + 4);
-
-        bytes.put_u32_le(encode_header(size));
-        let mut header = bytes.split();
-        message.encode(&mut bytes).unwrap();
-        header.unsplit(bytes);
-
-        self.stream.write_all(&header)?;
+        self.stream.write_all(&self.ctx.encode(request))?;
         Ok(())
     }
 }
 
-fn encode_header(size: usize) -> u32 {
-    let mut header = size as u32 & SIZE_MASK;
-    header |= (PROTOCOL_VERSION << 28) & VERSION_MASK;
+pub fn connect_with_config(config: StreamingClientConfig) -> Result<StreamingClient<TcpStream>> {
+    if config.auto_start {
+        let stream = TcpStream::connect(("127.0.0.1", config.server_port));
 
-    header
+        if let Ok(stream) = stream {
+            stream.set_nodelay(true)?;
+
+            return Ok(StreamingClient {
+                stream,
+                ctx: RpcContext::new(),
+            });
+        } else {
+            let mut command = Command::new("olad");
+            let command = command.args(["-r", &config.server_port.to_string(), "--syslog"]);
+
+            #[cfg(not(target_os = "windows"))]
+            let command = command.arg("--daemon");
+
+            command.spawn().map_err(Error::AutoStart)?;
+
+            // The official client sleeps for 1s
+            sleep(Duration::from_secs(1));
+        }
+    }
+
+    let stream = TcpStream::connect(("127.0.0.1", config.server_port))?;
+    stream.set_nodelay(true)?;
+
+    Ok(StreamingClient {
+        stream,
+        ctx: RpcContext::new(),
+    })
+}
+
+pub fn connect() -> Result<StreamingClient<TcpStream>> {
+    connect_with_config(Default::default())
 }

@@ -1,7 +1,7 @@
-use olaclient::{DmxBuffer, StreamingClient};
+use olaclient::DmxBuffer;
 
 fn main() {
-    let mut channel = StreamingClient::new().connect().unwrap();
+    let mut channel = olaclient::connect().unwrap();
     let mut buffer = DmxBuffer::new();
 
     // Send 256 frames to the server, incrementing channel 0 each frame

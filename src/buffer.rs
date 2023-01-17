@@ -1,5 +1,6 @@
 use std::ops::Deref;
 
+#[derive(Clone, Debug)]
 pub struct DmxBuffer(Box<[u8; 512]>);
 
 impl Default for DmxBuffer {
