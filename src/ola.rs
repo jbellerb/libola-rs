@@ -14,35 +14,15 @@ pub mod proto {
     }
 }
 
-use crate::{PROTOCOL_VERSION, SIZE_MASK, VERSION_MASK};
+use crate::{Error, Result, PROTOCOL_VERSION, SIZE_MASK, VERSION_MASK};
 
-use bytes::{BufMut, Bytes, BytesMut};
+use bytes::{BufMut, BytesMut};
 use prost::Message;
 
-/// RPC methods supported by `olad`.
-// TODO: Generate from .proto
-#[derive(Clone, Debug)]
-pub enum RpcCall {
-    StreamDmxData(proto::DmxData),
-}
-
-impl RpcCall {
-    pub fn encode(&self, id: u32) -> proto::rpc::RpcMessage {
-        let (rpc_type, name, buffer) = match self {
-            RpcCall::StreamDmxData(r) => (
-                proto::rpc::Type::StreamRequest,
-                "StreamDmxData",
-                r.encode_to_vec(),
-            ),
-        };
-
-        proto::rpc::RpcMessage {
-            r#type: rpc_type as i32,
-            id: Some(id),
-            name: Some(name.to_string()),
-            buffer: Some(buffer),
-        }
-    }
+/// Methods that can be sent over an RPC channel.
+pub trait RpcCall {
+    /// Encode an RPC call as an RPC message.
+    fn to_message(&self, id: u32) -> proto::rpc::RpcMessage;
 }
 
 /// Encode an RPC message header.
@@ -75,17 +55,13 @@ impl RpcContext {
     }
 
     /// Encode an RPC call as a new message.
-    pub fn encode(&mut self, call: RpcCall) -> Bytes {
-        let message = call.encode(self.next_sequence());
-
+    pub fn encode(&mut self, call: proto::OlaServerServiceCall, dst: &mut BytesMut) -> Result<()> {
+        let message = call.to_message(self.next_sequence());
         let size = message.encoded_len();
-        let mut bytes = BytesMut::with_capacity(size + 4);
 
-        bytes.put(&encode_header(PROTOCOL_VERSION, size)[..]);
-        let mut header = bytes.split();
-        message.encode(&mut bytes).unwrap();
-        header.unsplit(bytes);
+        dst.put(&encode_header(PROTOCOL_VERSION, size)[..]);
+        message.encode(dst).map_err(|_| Error::Encode())?;
 
-        header.freeze()
+        Ok(())
     }
 }

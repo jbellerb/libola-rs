@@ -4,9 +4,11 @@ use std::process::Command;
 use std::thread::sleep;
 use std::time::Duration;
 
-use crate::ola::proto::DmxData;
-use crate::ola::{RpcCall, RpcContext};
+use crate::ola::proto::{DmxData, OlaServerServiceCall};
+use crate::ola::RpcContext;
 use crate::{DmxBuffer, Error, Result, OLA_DEFAULT_PORT};
+
+use bytes::BytesMut;
 
 #[derive(Clone, Debug)]
 pub struct StreamingClientConfig {
@@ -24,6 +26,7 @@ impl Default for StreamingClientConfig {
 }
 
 impl StreamingClientConfig {
+    /// Create a new `StreamingClientConfig`.
     pub fn new() -> Self {
         Default::default()
     }
@@ -32,27 +35,44 @@ impl StreamingClientConfig {
 #[derive(Debug)]
 pub struct StreamingClient<S> {
     stream: S,
-    ctx: RpcContext,
+    context: RpcContext,
+}
+
+impl<S> StreamingClient<S> {
+    /// Gets a reference to the underlying stream.
+    pub fn get_ref(&self) -> &S {
+        &self.stream
+    }
+
+    /// Gets a mutable reference to the underlying stream.
+    pub fn get_mut(&mut self) -> &mut S {
+        &mut self.stream
+    }
 }
 
 impl<S: Write> StreamingClient<S> {
+    /// Send a DMX buffer to an OLA universe.
     pub fn send_dmx(&mut self, universe: u32, data: &DmxBuffer) -> Result<()> {
         self.send_dmx_with_priority(universe, data, 100)
     }
 
+    /// Send a DMX buffer to an OLA universe with a priority value.
     pub fn send_dmx_with_priority(
         &mut self,
         universe: u32,
         data: &DmxBuffer,
         priority: u8,
     ) -> Result<()> {
-        let request = RpcCall::StreamDmxData(DmxData {
+        let request = OlaServerServiceCall::StreamDmxData(DmxData {
             universe: universe as i32,
             data: data.to_vec(),
             priority: Some(priority as i32),
         });
 
-        self.stream.write_all(&self.ctx.encode(request))?;
+        let mut buf = BytesMut::new();
+        self.context.encode(request, &mut buf)?;
+
+        self.stream.write_all(&buf.freeze())?;
         Ok(())
     }
 }
@@ -66,7 +86,7 @@ pub fn connect_with_config(config: StreamingClientConfig) -> Result<StreamingCli
 
             return Ok(StreamingClient {
                 stream,
-                ctx: RpcContext::new(),
+                context: RpcContext::new(),
             });
         } else {
             let mut command = Command::new("olad");
@@ -77,7 +97,7 @@ pub fn connect_with_config(config: StreamingClientConfig) -> Result<StreamingCli
 
             command.spawn().map_err(Error::AutoStart)?;
 
-            // The official client sleeps for 1s
+            // The official client sleeps for 1 second
             sleep(Duration::from_secs(1));
         }
     }
@@ -87,10 +107,10 @@ pub fn connect_with_config(config: StreamingClientConfig) -> Result<StreamingCli
 
     Ok(StreamingClient {
         stream,
-        ctx: RpcContext::new(),
+        context: RpcContext::new(),
     })
 }
 
 pub fn connect() -> Result<StreamingClient<TcpStream>> {
-    connect_with_config(Default::default())
+    connect_with_config(StreamingClientConfig::new())
 }

@@ -125,8 +125,10 @@ name = "olaclient"
 version = "0.0.1"
 dependencies = [
  "bytes",
+ "proc-macro2",
  "prost",
  "prost-build",
+ "quote",
  "thiserror",
 ]
 

@@ -9,4 +9,6 @@ prost = "0.11"
 thiserror = "1.0"
 
 [build-dependencies]
-prost-build = { version = "0.11" }
+proc-macro2 = "1.0"
+prost-build = "0.11"
+quote = "1.0"

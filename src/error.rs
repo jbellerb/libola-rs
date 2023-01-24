@@ -11,4 +11,8 @@ pub enum Error {
     /// Errors related to auto-starting `olad`.
     #[error("failed to start olad: {0}")]
     AutoStart(#[source] std::io::Error),
+
+    /// Encode buffer is too small.
+    #[error("buffer too small to write message to")]
+    Encode(),
 }
