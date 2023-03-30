@@ -1,8 +1,8 @@
-use olaclient::DmxBuffer;
+use ola::DmxBuffer;
 
 #[tokio::main]
 async fn main() {
-    let mut channel = olaclient::connect_async().await.unwrap();
+    let mut channel = ola::connect_async().await.unwrap();
     let mut buffer = DmxBuffer::new();
 
     // Send 256 frames to the server, incrementing channel 0 each frame

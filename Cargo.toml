@@ -1,7 +1,22 @@
 [package]
-name = "olaclient"
-version = "0.0.1"
+name = "ola"
+version = "0.1.0"
+authors = ["Jared Beller <jbellerb@vt.edu>"]
+categories = ["api-bindings"]
+description = "Unofficial Rust client for the Open Lighting Architecture"
+documentation = "https://docs.rs/ola"
 edition = "2021"
+include = [
+    "build.rs",
+    "/src/**/*.rs",
+    "/ola/common/protocol/Ola.proto",
+    "ola/common/rpc/Rpc.proto",
+    "README.md",
+    "LICENSE",
+]
+keywords = ["dmx", "lighting"]
+license = "LGPL-2.1-or-later"
+repository = "https://github.com/jbellerb/libola-rs"
 
 [dependencies]
 bytes = "1"
