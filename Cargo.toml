@@ -4,11 +4,18 @@ version = "0.0.1"
 edition = "2021"
 
 [dependencies]
-bytes = "1.3"
+bytes = "1"
 prost = "0.11"
-thiserror = "1.0"
+thiserror = "1"
+tokio = { version = "1", features = ["io-util", "net", "time"], optional = true }
+
+[features]
+tokio = ["dep:tokio"]
 
 [build-dependencies]
-proc-macro2 = "1.0"
+proc-macro2 = "1"
 prost-build = "0.11"
-quote = "1.0"
+quote = "1"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full"] }

@@ -77,7 +77,7 @@ impl OlaRpcServiceGenerator {
             Self::#method_name(r) => rpc::RpcMessage {
                 r#type: rpc::Type::#rpc_type as i32,
                 id: Some(id),
-                name: Some(String::new(#method_name_raw)),
+                name: Some(String::from(#method_name_raw)),
                 buffer: Some(prost::Message::encode_to_vec(r)),
             }
         }

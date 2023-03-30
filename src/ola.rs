@@ -55,11 +55,11 @@ impl RpcContext {
     }
 
     /// Encode an RPC call as a new message.
-    pub fn encode(&mut self, call: proto::OlaServerServiceCall, dst: &mut BytesMut) -> Result<()> {
-        let message = call.to_message(self.next_sequence());
+    pub fn encode(&mut self, item: proto::OlaServerServiceCall, dst: &mut BytesMut) -> Result<()> {
+        let message = item.to_message(self.next_sequence());
         let size = message.encoded_len();
 
-        dst.put(&encode_header(PROTOCOL_VERSION, size)[..]);
+        dst.put_slice(&encode_header(PROTOCOL_VERSION, size));
         message.encode(dst).map_err(|_| Error::Encode())?;
 
         Ok(())

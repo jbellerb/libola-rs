@@ -16,3 +16,6 @@ const SIZE_MASK: u32 = 0x0fffffff;
 pub use crate::buffer::DmxBuffer;
 pub use crate::client::{connect, connect_with_config, StreamingClient};
 pub use crate::error::{Error, Result};
+
+#[cfg(feature = "tokio")]
+pub use crate::client::{connect_async, connect_async_with_config, StreamingClientAsync};
