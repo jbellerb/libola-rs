@@ -1,11 +1,45 @@
 use std::ops::Deref;
 
-#[derive(Clone, Debug)]
+use crate::error::BufferError;
+
+#[derive(Clone, Debug, Eq)]
 pub struct DmxBuffer(Box<[u8; 512]>);
 
 impl Default for DmxBuffer {
     fn default() -> Self {
         Self(Box::new([0; 512]))
+    }
+}
+
+impl PartialEq for DmxBuffer {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.as_ref() == other.0.as_ref()
+    }
+}
+
+impl From<[u8; 512]> for DmxBuffer {
+    fn from(value: [u8; 512]) -> Self {
+        Self(Box::new(value))
+    }
+}
+
+impl TryFrom<&[u8]> for DmxBuffer {
+    type Error = BufferError;
+
+    fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
+        let buffer = value.try_into().map_err(|_| BufferError::Size)?;
+
+        Ok(Self(Box::new(buffer)))
+    }
+}
+
+impl TryFrom<Vec<u8>> for DmxBuffer {
+    type Error = BufferError;
+
+    fn try_from(value: Vec<u8>) -> Result<Self, Self::Error> {
+        let buffer = value.try_into().map_err(|_| BufferError::Size)?;
+
+        Ok(Self(Box::new(buffer)))
     }
 }
 
