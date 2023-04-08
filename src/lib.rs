@@ -1,6 +1,11 @@
 #![deny(missing_debug_implementations)]
+#![cfg_attr(docsrs, feature(doc_auto_cfg))]
 
 //! A client for interacting with the Open Lighting Architecture.
+//!
+//! ## Feature flags
+//!
+//! * **`tokio`** *(enabled by default)* — Enable to Tokio-powered asynchronous client
 
 pub mod buffer;
 pub mod client;
