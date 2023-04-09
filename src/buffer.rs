@@ -1,5 +1,5 @@
 use std::fmt::{self, Display, Formatter};
-use std::ops::Deref;
+use std::ops::{Deref, Index, IndexMut};
 
 #[derive(Clone, Debug, Eq)]
 pub struct DmxBuffer(Box<[u8; 512]>);
@@ -58,13 +58,19 @@ impl DmxBuffer {
     pub fn zero(&mut self) {
         self.0.fill(0);
     }
+}
 
-    pub fn get_channel(&mut self, channel: usize) -> u8 {
-        self.0[channel]
+impl Index<usize> for DmxBuffer {
+    type Output = u8;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        self.0.index(index)
     }
+}
 
-    pub fn set_channel(&mut self, channel: usize, value: u8) {
-        self.0[channel] = value;
+impl IndexMut<usize> for DmxBuffer {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        self.0.index_mut(index)
     }
 }
 
