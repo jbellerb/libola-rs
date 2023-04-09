@@ -1,6 +1,5 @@
+use std::fmt::{self, Display, Formatter};
 use std::ops::Deref;
-
-use crate::error::BufferError;
 
 #[derive(Clone, Debug, Eq)]
 pub struct DmxBuffer(Box<[u8; 512]>);
@@ -24,20 +23,20 @@ impl From<[u8; 512]> for DmxBuffer {
 }
 
 impl TryFrom<&[u8]> for DmxBuffer {
-    type Error = BufferError;
+    type Error = TryFromBufferError;
 
     fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
-        let buffer = value.try_into().map_err(|_| BufferError::Size)?;
+        let buffer = value.try_into().map_err(|_| TryFromBufferError(()))?;
 
         Ok(Self(Box::new(buffer)))
     }
 }
 
 impl TryFrom<Vec<u8>> for DmxBuffer {
-    type Error = BufferError;
+    type Error = TryFromBufferError;
 
     fn try_from(value: Vec<u8>) -> Result<Self, Self::Error> {
-        let buffer = value.try_into().map_err(|_| BufferError::Size)?;
+        let buffer = value.try_into().map_err(|_| TryFromBufferError(()))?;
 
         Ok(Self(Box::new(buffer)))
     }
@@ -66,5 +65,15 @@ impl DmxBuffer {
 
     pub fn set_channel(&mut self, channel: usize, value: u8) {
         self.0[channel] = value;
+    }
+}
+
+/// The error type returned when a conversion to a dmx buffer fails.
+#[derive(Clone, Debug)]
+pub struct TryFromBufferError(());
+
+impl Display for TryFromBufferError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "failed to convert to dmx buffer")
     }
 }

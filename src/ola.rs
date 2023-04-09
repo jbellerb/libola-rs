@@ -1,4 +1,4 @@
-//! OLA communication.
+//! OLA protocol bits.
 //!
 //! This module contains types and helper functions for encoding and decoding
 //! messages between the client and `olad`.
@@ -14,7 +14,10 @@ pub mod proto {
     }
 }
 
-use crate::{Error, Result, PROTOCOL_VERSION, SIZE_MASK, VERSION_MASK};
+use std::error::Error;
+use std::fmt::{self, Display, Formatter};
+
+use crate::{PROTOCOL_VERSION, SIZE_MASK, VERSION_MASK};
 
 use bytes::{BufMut, BytesMut};
 use prost::Message;
@@ -55,13 +58,48 @@ impl RpcContext {
     }
 
     /// Encode an RPC call as a new message.
-    pub fn encode(&mut self, item: proto::OlaServerServiceCall, dst: &mut BytesMut) -> Result<()> {
+    pub fn encode(
+        &mut self,
+        item: proto::OlaServerServiceCall,
+        dst: &mut BytesMut,
+    ) -> Result<(), MessageEncodeError> {
         let message = item.to_message(self.next_sequence());
         let size = message.encoded_len();
 
         dst.put_slice(&encode_header(PROTOCOL_VERSION, size));
-        message.encode(dst).map_err(|_| Error::Encode())?;
+        message.encode(dst).map_err(|e| MessageEncodeError {
+            kind: MessageEncodeErrorKind::Capacity(e),
+        })?;
 
         Ok(())
     }
+}
+
+/// The error type returned when encoding an API message fails.
+#[derive(Clone, Debug)]
+#[non_exhaustive]
+pub struct MessageEncodeError {
+    pub kind: MessageEncodeErrorKind,
+}
+
+impl Display for MessageEncodeError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "failed to encode API message")
+    }
+}
+
+impl Error for MessageEncodeError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match &self.kind {
+            MessageEncodeErrorKind::Capacity(e) => Some(e),
+        }
+    }
+}
+
+/// Enum to store the various types of errors that can cause encoding a message
+/// to fail.
+#[derive(Clone, Debug)]
+pub enum MessageEncodeErrorKind {
+    /// Destination buffer has insufficient capacity.
+    Capacity(prost::EncodeError),
 }
