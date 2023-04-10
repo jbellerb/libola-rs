@@ -1,20 +1,13 @@
-use super::{
-    spawn_olad, CallError, CallErrorKind, ClientConfig, ConnectError, ConnectErrorKind,
-    OLA_SPAWN_DELAY,
-};
+use super::{CallError, CallErrorKind};
 use crate::ola::proto::{DmxData, OlaServerServiceCall};
 use crate::ola::RpcContext;
 use crate::DmxBuffer;
 
 use bytes::BytesMut;
-use tokio::{
-    io::{AsyncWrite, AsyncWriteExt},
-    net::TcpStream,
-    time::sleep,
-};
+use tokio::io::{AsyncWrite, AsyncWriteExt};
 
 #[derive(Debug)]
-pub struct StreamingClientAsync<S> {
+pub struct StreamingClientAsync<S: AsyncWrite + Unpin> {
     stream: S,
     ctx: RpcContext,
 }
@@ -45,46 +38,15 @@ impl<S: AsyncWrite + Unpin> StreamingClientAsync<S> {
         })?;
         Ok(())
     }
-}
 
-pub async fn connect_async_with_config(
-    config: &ClientConfig,
-) -> Result<StreamingClientAsync<TcpStream>, ConnectError> {
-    if config.auto_start {
-        let stream = TcpStream::connect(("127.0.0.1", config.server_port)).await;
-
-        if let Ok(stream) = stream {
-            stream.set_nodelay(true).map_err(|e| ConnectError {
-                kind: ConnectErrorKind::NoDelay(e),
-            })?;
-
-            return Ok(StreamingClientAsync {
-                stream,
-                ctx: RpcContext::new(),
-            });
-        } else {
-            spawn_olad(config).map_err(|e| ConnectError {
-                kind: ConnectErrorKind::Spawn(e),
-            })?;
-            sleep(OLA_SPAWN_DELAY).await;
+    /// Construct a new streaming async client from an async stream. The
+    /// client is initialized with a fresh context. This usually, shouldn't
+    /// be called directly, as `ClientConfig::connect_async()` will set up a
+    /// stream for you before internally calling this.
+    pub fn from_stream(stream: S) -> Self {
+        Self {
+            stream,
+            ctx: RpcContext::new(),
         }
     }
-
-    let stream = TcpStream::connect(("127.0.0.1", config.server_port))
-        .await
-        .map_err(|e| ConnectError {
-            kind: ConnectErrorKind::Connect(e),
-        })?;
-    stream.set_nodelay(true).map_err(|e| ConnectError {
-        kind: ConnectErrorKind::NoDelay(e),
-    })?;
-
-    Ok(StreamingClientAsync {
-        stream,
-        ctx: RpcContext::new(),
-    })
-}
-
-pub async fn connect_async() -> Result<StreamingClientAsync<TcpStream>, ConnectError> {
-    connect_async_with_config(&ClientConfig::new()).await
 }

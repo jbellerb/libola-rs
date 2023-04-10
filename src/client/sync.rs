@@ -1,11 +1,6 @@
 use std::io::Write;
-use std::net::TcpStream;
-use std::thread::sleep;
 
-use super::{
-    spawn_olad, CallError, CallErrorKind, ClientConfig, ConnectError, ConnectErrorKind,
-    OLA_SPAWN_DELAY,
-};
+use super::{CallError, CallErrorKind};
 use crate::ola::proto::{DmxData, OlaServerServiceCall};
 use crate::ola::RpcContext;
 use crate::DmxBuffer;
@@ -13,21 +8,9 @@ use crate::DmxBuffer;
 use bytes::BytesMut;
 
 #[derive(Debug)]
-pub struct StreamingClient<S> {
+pub struct StreamingClient<S: Write> {
     stream: S,
-    context: RpcContext,
-}
-
-impl<S> StreamingClient<S> {
-    /// Gets a reference to the underlying stream.
-    pub fn get_ref(&self) -> &S {
-        &self.stream
-    }
-
-    /// Gets a mutable reference to the underlying stream.
-    pub fn get_mut(&mut self) -> &mut S {
-        &mut self.stream
-    }
+    ctx: RpcContext,
 }
 
 impl<S: Write> StreamingClient<S> {
@@ -50,11 +33,9 @@ impl<S: Write> StreamingClient<S> {
         });
 
         let mut buf = BytesMut::new();
-        self.context
-            .encode(request, &mut buf)
-            .map_err(|e| CallError {
-                kind: CallErrorKind::Encode(e),
-            })?;
+        self.ctx.encode(request, &mut buf).map_err(|e| CallError {
+            kind: CallErrorKind::Encode(e),
+        })?;
         self.stream
             .write_all(&buf.freeze())
             .map_err(|e| CallError {
@@ -62,45 +43,15 @@ impl<S: Write> StreamingClient<S> {
             })?;
         Ok(())
     }
-}
 
-pub fn connect_with_config(
-    config: &ClientConfig,
-) -> Result<StreamingClient<TcpStream>, ConnectError> {
-    if config.auto_start {
-        let stream = TcpStream::connect(("127.0.0.1", config.server_port));
-
-        if let Ok(stream) = stream {
-            stream.set_nodelay(true).map_err(|e| ConnectError {
-                kind: ConnectErrorKind::NoDelay(e),
-            })?;
-
-            return Ok(StreamingClient {
-                stream,
-                context: RpcContext::new(),
-            });
-        } else {
-            spawn_olad(config).map_err(|e| ConnectError {
-                kind: ConnectErrorKind::Spawn(e),
-            })?;
-            sleep(OLA_SPAWN_DELAY);
+    /// Construct a new streaming client from an stream. The client is
+    /// initialized with a fresh context. This usually, shouldn't be called
+    /// directly, as `ClientConfig::connect()` will set up a stream for you
+    /// before internally calling this.
+    pub fn from_stream(stream: S) -> Self {
+        Self {
+            stream,
+            ctx: RpcContext::new(),
         }
     }
-
-    let stream =
-        TcpStream::connect(("127.0.0.1", config.server_port)).map_err(|e| ConnectError {
-            kind: ConnectErrorKind::Connect(e),
-        })?;
-    stream.set_nodelay(true).map_err(|e| ConnectError {
-        kind: ConnectErrorKind::NoDelay(e),
-    })?;
-
-    Ok(StreamingClient {
-        stream,
-        context: RpcContext::new(),
-    })
-}
-
-pub fn connect() -> Result<StreamingClient<TcpStream>, ConnectError> {
-    connect_with_config(&ClientConfig::new())
 }
