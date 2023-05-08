@@ -1,3 +1,4 @@
+use std::error::Error;
 use std::fmt::{self, Display, Formatter};
 use std::ops::{Deref, Index, IndexMut};
 
@@ -197,3 +198,5 @@ impl Display for TryFromBufferError {
         write!(f, "failed to convert to DMX buffer")
     }
 }
+
+impl Error for TryFromBufferError {}
