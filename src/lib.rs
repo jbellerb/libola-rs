@@ -18,9 +18,9 @@ const SIZE_MASK: u32 = 0x0fffffff;
 
 pub use buffer::{DmxBuffer, TryFromBufferError};
 
-use client::StreamingClient;
 #[cfg(feature = "tokio")]
-use client::StreamingClientAsync;
+use client::ClientAsync;
+use client::StreamingClient;
 use config::{Config, ConnectError};
 use std::net::TcpStream;
 #[cfg(feature = "tokio")]
@@ -41,6 +41,6 @@ pub fn connect() -> Result<StreamingClient<TcpStream>, ConnectError> {
 /// configuration (auto-start and default port). See [`Config`] for changing
 /// the port and auto-start behavior.
 #[cfg(feature = "tokio")]
-pub async fn connect_async() -> Result<StreamingClientAsync<TokioTcpStream>, ConnectError> {
+pub async fn connect_async() -> Result<ClientAsync<TokioTcpStream>, ConnectError> {
     Config::new().connect_async().await
 }

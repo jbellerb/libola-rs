@@ -7,9 +7,9 @@ use std::process::Command;
 use std::thread::sleep;
 use std::time::Duration;
 
-use crate::client::StreamingClient;
 #[cfg(feature = "tokio")]
-use crate::client::StreamingClientAsync;
+use crate::client::ClientAsync;
+use crate::client::StreamingClient;
 
 #[cfg(feature = "tokio")]
 use tokio::{net::TcpStream as TokioTcpStream, time::sleep as tokio_sleep};
@@ -97,9 +97,7 @@ impl Config {
     /// cannot be established and (when `auto_start` is enabled) if `olad`
     /// cannot be started.
     #[cfg(feature = "tokio")]
-    pub async fn connect_async(
-        &self,
-    ) -> Result<StreamingClientAsync<TokioTcpStream>, ConnectError> {
+    pub async fn connect_async(&self) -> Result<ClientAsync<TokioTcpStream>, ConnectError> {
         let endpoint = ("127.0.0.1", self.server_port);
 
         if self.auto_start {
@@ -110,7 +108,7 @@ impl Config {
                     kind: ConnectErrorKind::NoDelay(e),
                 })?;
 
-                return Ok(StreamingClientAsync::from_stream(stream));
+                return Ok(ClientAsync::from_stream(stream));
             } else {
                 self.spawn_olad().map_err(|e| ConnectError {
                     kind: ConnectErrorKind::Spawn(e),
@@ -128,7 +126,7 @@ impl Config {
             kind: ConnectErrorKind::NoDelay(e),
         })?;
 
-        Ok(StreamingClientAsync::from_stream(stream))
+        Ok(ClientAsync::from_stream(stream))
     }
 }
 

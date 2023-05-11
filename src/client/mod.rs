@@ -3,13 +3,14 @@ mod r#async;
 mod sync;
 
 #[cfg(feature = "tokio")]
-pub use r#async::StreamingClientAsync;
+pub use r#async::ClientAsync;
 pub use sync::StreamingClient;
 
 use std::error::Error;
 use std::fmt::{self, Display, Formatter};
 
-use crate::ola::MessageEncodeError;
+use crate::ola::{MessageDecodeError, MessageEncodeError};
+use crate::TryFromBufferError;
 
 /// The error type returned when an RCP call fails.
 #[derive(Debug)]
@@ -28,6 +29,8 @@ impl Error for CallError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match &self.kind {
             CallErrorKind::Encode(e) => Some(e),
+            CallErrorKind::Decode(e) => Some(e),
+            CallErrorKind::InvalidBuffer(e) => Some(e),
             CallErrorKind::Write(e) => Some(e),
         }
     }
@@ -40,6 +43,10 @@ impl Error for CallError {
 pub enum CallErrorKind {
     /// Failure encoding an RPC message.
     Encode(MessageEncodeError),
+    /// Failure decoding an RPC message.
+    Decode(MessageDecodeError),
+    /// RPC message contained an invalid DMX buffer.
+    InvalidBuffer(TryFromBufferError),
     /// Failure writing an RPC message to the underlying socket.
     Write(std::io::Error),
 }
