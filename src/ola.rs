@@ -153,6 +153,7 @@ impl Error for MessageDecodeError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match &self.kind {
             MessageDecodeErrorKind::Invalid(e) => Some(e),
+            MessageDecodeErrorKind::Unrecognised => None,
         }
     }
 }
@@ -163,4 +164,6 @@ impl Error for MessageDecodeError {
 pub enum MessageDecodeErrorKind {
     /// Input buffer does not contain a valid message.
     Invalid(prost::DecodeError),
+    /// Recieved message was of an unknown method or type.
+    Unrecognised,
 }

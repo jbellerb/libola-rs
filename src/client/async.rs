@@ -67,7 +67,7 @@ impl<S: AsyncRead + AsyncWrite + Unpin> ClientAsync<S> {
 
     pub async fn recv(&mut self) -> Result<(i32, DmxBuffer), CallError> {
         loop {
-            self.stream.read_buf(&mut self.buf).await;
+            let _ = self.stream.read_buf(&mut self.buf).await;
 
             if self.buf.len() < 4 {
                 // must load more to read header

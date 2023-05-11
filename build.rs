@@ -51,6 +51,9 @@ impl OlaRpcServiceGenerator {
                     use prost::Message;
                     match (rpc::Type::from_i32(msg.r#type), msg.id, msg.name.as_deref(), msg.buffer) {
                         #(#decodings),*
+                        _ => Err(super::MessageDecodeError {
+                            kind: super::MessageDecodeErrorKind::Unrecognised,
+                        }),
                     }
                 }
 
