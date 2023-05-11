@@ -1,6 +1,6 @@
 use std::error::Error;
 use std::fmt::{self, Display, Formatter};
-use std::ops::{Deref, Index, IndexMut};
+use std::ops::{Deref, DerefMut, Index, IndexMut};
 
 /// A fixed-size byte buffer representing the state of a single DMX universe.
 ///
@@ -137,6 +137,12 @@ impl Deref for DmxBuffer {
 
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+impl DerefMut for DmxBuffer {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
     }
 }
 
